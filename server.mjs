@@ -17,6 +17,9 @@
  * - PROXY_HOST    - Proxy host:port (e.g., "proxy.example.com:8080")
  * - PROXY_USER    - Proxy username
  * - PROXY_PASS    - Proxy password
+ * - TIKTOK_COOKIE - Raw cookie string ("name=value; name2=value2") from a
+ *                    logged-in TikTok session, injected before every browser
+ *                    init so requests run authenticated instead of anonymous.
  */
 
 import http from "http";
@@ -52,6 +55,31 @@ const PROXY_ENABLED =
 const PROXY_HOST = process.env.PROXY_HOST || "";
 const PROXY_USER = process.env.PROXY_USER || "";
 const PROXY_PASS = process.env.PROXY_PASS || "";
+
+// Login cookie from environment (logged-in TikTok session)
+const TIKTOK_COOKIE = process.env.TIKTOK_COOKIE || "";
+
+/**
+ * Parse a raw "name=value; name2=value2" cookie header string into
+ * Puppeteer cookie objects scoped to the TikTok domain.
+ */
+function parseCookieHeader(cookieStr) {
+  return cookieStr
+    .split(";")
+    .map((pair) => pair.trim())
+    .filter(Boolean)
+    .map((pair) => {
+      const idx = pair.indexOf("=");
+      if (idx === -1) return null;
+      return {
+        name: pair.slice(0, idx).trim(),
+        value: pair.slice(idx + 1).trim(),
+        domain: ".tiktok.com",
+        path: "/",
+      };
+    })
+    .filter(Boolean);
+}
 
 // Local SDK path - the SDK is used to generate valid signatures
 const SDK_PATH = path.join(__dirname, "javascript", "webmssdk_5.1.3.js");
@@ -287,6 +315,17 @@ async function initBrowser() {
         };
       }
     });
+
+    // Log in via cookie, if provided, before the SDK navigates the page
+    if (TIKTOK_COOKIE) {
+      const loginCookies = parseCookieHeader(TIKTOK_COOKIE);
+      if (loginCookies.length) {
+        await page.setCookie(...loginCookies);
+        console.log(
+          `[Server] Logged in via TIKTOK_COOKIE (${loginCookies.length} cookies)`,
+        );
+      }
+    }
 
     // Initialize with local SDK
     await initWithLocalSdk();
@@ -956,6 +995,7 @@ async function handleRequest(req, res) {
           queueLength: requestQueue.length,
           isProcessing: isProcessingQueue,
           localSdkAvailable: !!localSdkContent,
+          cookieLoginEnabled: !!TIKTOK_COOKIE,
           proxyEnabled: PROXY_ENABLED,
           userAgent: currentUserAgent,
         }),
