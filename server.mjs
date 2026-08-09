@@ -1150,6 +1150,16 @@ async function handleRequest(req, res) {
       return;
     }
 
+    // F5 tab (reload page only, no browser restart)
+    if (url.pathname === "/refresh") {
+      console.log("[Server] Refreshing tab...");
+      await ensurePageReady();
+      await page.reload({ waitUntil: "domcontentloaded", timeout: 60000 });
+      res.writeHead(200);
+      res.end(JSON.stringify({ status: "ok", message: "Tab refreshed" }));
+      return;
+    }
+
     // 404
     res.writeHead(404);
     res.end(JSON.stringify({ error: "Not found" }));

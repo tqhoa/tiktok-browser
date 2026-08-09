@@ -17,8 +17,8 @@ const DEFAULT_SEC_UID =
 const CONFIG = {
   DEVICE_ID: "7669228444366489089",
   ODIN_ID: "7146841732746036230",
-  VERIFY_FP: "verify_msb3qj97_eKlV40zA_YRB9_4C5X_9q6X_C8GbTZ49Gp0L",
-  // scene: 21 = following list, 67 = followers list
+  VERIFY_FP: "verify_msl8vkcv_J8gj8YZl_giY1_4eBQ_9CmX_QnYkCihoPueD",
+  // scene: 21 = following list, 22 = followers list
   SCENE: { following: "21", follower: "67" },
 };
 
@@ -45,6 +45,7 @@ async function getSignedUrl(url) {
  */
 async function fetchFromTikTok(signedData) {
   console.log(signedData.signed_url);
+  console.log(signedData.cookies);
   const response = await fetch(signedData.signed_url, {
     headers: {
       "User-Agent": signedData.navigator.user_agent,
@@ -117,7 +118,7 @@ async function fetchUserList(
   secUid,
   type = "following",
   count = 30,
-  cursor = 0,
+  cursor = "1766648084",
 ) {
   const url = buildUserListUrl(secUid, type, count, cursor);
 
@@ -128,7 +129,6 @@ async function fetchUserList(
 
   console.log("Getting signed URL...");
   const signedData = await getSignedUrl(url);
-
   console.log("Fetching from TikTok...");
 
   const data = await fetchFromTikTok(signedData);
@@ -140,11 +140,16 @@ async function fetchUserList(
 async function main() {
   const secUid = process.argv[2] || DEFAULT_SEC_UID;
   const type = process.argv[3] || "following";
-  const count = parseInt(process.argv[4]) || 1;
+  const count = parseInt(process.argv[4]) || 30;
 
   try {
     const data = await fetchUserList(secUid, type, count);
     console.log(JSON.stringify(data, null, 2));
+    console.log(data.total);
+    console.log(data.minCursor);
+    data.userList.forEach((user, index) => {
+      console.log(++index, user.user.uniqueId);
+    });
   } catch (error) {
     console.error("Error:", error.message);
     process.exit(1);
