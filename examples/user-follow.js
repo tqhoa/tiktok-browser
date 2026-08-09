@@ -12,14 +12,14 @@ const SERVER_URL = "http://localhost:8080";
 
 // Default secUid (TikTok's official account)
 const DEFAULT_SEC_UID =
-  "MS4wLjABAAAAsQSVZaPLMBzgGDrdtoAnvYcFg47n2s2o5tvFEoOl_lLTWV2uPlhfP5bX2zDQk5Hs";
+  "MS4wLjABAAAAIW4aU-_1W4E_VhhPe8_x5wKpSIc5_wAKnjYvwpEtjh-TF1Xei-hWHqTzS0r1tBif";
 
 const CONFIG = {
   DEVICE_ID: "7669228444366489089",
   ODIN_ID: "7146841732746036230",
   VERIFY_FP: "verify_msb3qj97_eKlV40zA_YRB9_4C5X_9q6X_C8GbTZ49Gp0L",
-  // scene: 21 = following list, 22 = followers list
-  SCENE: { following: "21", follower: "22" },
+  // scene: 21 = following list, 67 = followers list
+  SCENE: { following: "21", follower: "67" },
 };
 
 /**
@@ -96,7 +96,8 @@ function buildUserListUrl(secUid, type = "following", count = 30, cursor = 0) {
     priority_region: "SG",
     referer: "",
     region: "VN",
-    scene: CONFIG.SCENE[type] || CONFIG.SCENE.following,
+    //scene: CONFIG.SCENE[type] || CONFIG.SCENE.following,
+    scene: 67,
     screen_height: "1080",
     screen_width: "1920",
     secUid: secUid,
@@ -139,7 +140,7 @@ async function fetchUserList(
 async function main() {
   const secUid = process.argv[2] || DEFAULT_SEC_UID;
   const type = process.argv[3] || "following";
-  const count = parseInt(process.argv[4]) || 30;
+  const count = parseInt(process.argv[4]) || 1;
 
   try {
     const data = await fetchUserList(secUid, type, count);
