@@ -171,24 +171,25 @@ async function main() {
   const type = process.argv[3] || "following";
   const count = parseInt(process.argv[4]) || 30;
 
-  let minCursor = "";
+  let minCursor = 0;
   let hasMore = true;
   let index = 0;
 
   try {
     while (hasMore) {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
       const data = await fetchUserList(secUid, type, count, minCursor);
       //console.log(JSON.stringify(data, null, 2));
       //console.log(data.total);
       minCursor = data.minCursor;
       hasMore = data.hasMore;
 
-      //console.log(hasMore);
+      console.log(minCursor);
+      console.log(hasMore);
 
       data.userList.forEach((user) => {
         console.log(++index, user.user.uniqueId, user.statsV2);
       });
+      //await new Promise((resolve) => setTimeout(resolve, 3000));
     }
   } catch (error) {
     console.error("Error:", error.message);
