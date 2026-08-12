@@ -12,7 +12,7 @@ const SERVER_URL = "http://localhost:8080";
 
 // Default secUid (TikTok's official account)
 const DEFAULT_SEC_UID =
-  "MS4wLjABAAAAIW4aU-_1W4E_VhhPe8_x5wKpSIc5_wAKnjYvwpEtjh-TF1Xei-hWHqTzS0r1tBif";
+  "MS4wLjABAAAAuU3iSTEOGcGXqtZNtJTZ8GKck5dtZrC3L-P3j86JA5XWYjiNld58YETlLlsCm-V2";
 
 const CONFIG = {
   DEVICE_ID: "7669228444366489089",
@@ -44,8 +44,8 @@ async function getSignedUrl(url) {
  * Make request to TikTok API with signed URL
  */
 async function fetchFromTikTok(signedData) {
-  console.log(signedData.signed_url);
-  console.log(signedData.cookies);
+  //console.log(signedData.signed_url);
+  //console.log(signedData.cookies);
   const response = await fetch(signedData.signed_url, {
     headers: {
       "User-Agent": signedData.navigator.user_agent,
@@ -60,6 +60,26 @@ async function fetchFromTikTok(signedData) {
   }
 
   return response.json();
+}
+
+/**
+ * Fallback: Fetch through browser using /fetch endpoint
+ */
+async function fetchViaBrowser(url) {
+  console.log("Using /fetch fallback (browser-based request)...");
+
+  const response = await fetch(`${SERVER_URL}/fetch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+
+  const result = await response.json();
+  if (result.status !== "ok") {
+    throw new Error(result.message || "Fetch failed");
+  }
+
+  return result.data;
 }
 
 /**
@@ -93,16 +113,16 @@ function buildUserListUrl(secUid, type = "following", count = 30, cursor = 0) {
     maxCursor: "0",
     minCursor: cursor.toString(),
     odinId: CONFIG.ODIN_ID,
-    os: "linux",
-    priority_region: "SG",
+    os: "mac",
+    priority_region: "US",
     referer: "",
-    region: "VN",
+    region: "US",
     //scene: CONFIG.SCENE[type] || CONFIG.SCENE.following,
     scene: 67,
     screen_height: "1080",
     screen_width: "1920",
     secUid: secUid,
-    tz_name: "Asia/Saigon",
+    tz_name: "America/Los_Angeles",
     user_is_login: "true",
     verifyFp: CONFIG.VERIFY_FP,
     webcast_language: "en",
@@ -117,39 +137,59 @@ function buildUserListUrl(secUid, type = "following", count = 30, cursor = 0) {
 async function fetchUserList(
   secUid,
   type = "following",
-  count = 30,
-  cursor = "1766648084",
+  count = 50,
+  cursor = "",
 ) {
   const url = buildUserListUrl(secUid, type, count, cursor);
-
+  /*
   console.log(
     `Fetching ${type} list for secUid: ${secUid.substring(0, 30)}...`,
   );
-  console.log("");
+  */
+  //console.log("");
 
-  console.log("Getting signed URL...");
+  //console.log("Getting signed URL...");
   const signedData = await getSignedUrl(url);
-  console.log("Fetching from TikTok...");
+  //console.log("Fetching from TikTok...");
 
-  const data = await fetchFromTikTok(signedData);
+  let data;
+  try {
+    data = await fetchFromTikTok(signedData);
+  } catch (e) {
+    console.log("Fetching from /fetch...");
+    data = null;
+  }
+  if (!data) {
+    data = await fetchViaBrowser(url);
+  }
 
   return data || {};
 }
 
-// Main execution
 async function main() {
   const secUid = process.argv[2] || DEFAULT_SEC_UID;
   const type = process.argv[3] || "following";
   const count = parseInt(process.argv[4]) || 30;
 
+  let minCursor = "";
+  let hasMore = true;
+  let index = 0;
+
   try {
-    const data = await fetchUserList(secUid, type, count);
-    console.log(JSON.stringify(data, null, 2));
-    console.log(data.total);
-    console.log(data.minCursor);
-    data.userList.forEach((user, index) => {
-      console.log(++index, user.user.uniqueId);
-    });
+    while (hasMore) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const data = await fetchUserList(secUid, type, count, minCursor);
+      //console.log(JSON.stringify(data, null, 2));
+      //console.log(data.total);
+      minCursor = data.minCursor;
+      hasMore = data.hasMore;
+
+      //console.log(hasMore);
+
+      data.userList.forEach((user) => {
+        console.log(++index, user.user.uniqueId, user.statsV2);
+      });
+    }
   } catch (error) {
     console.error("Error:", error.message);
     process.exit(1);
