@@ -108,7 +108,7 @@ async function main() {
 
   try {
     const data = await fetchItem(itemID);
-    console.log(data);
+    console.log(JSON.stringify(data, null, 2) || data);
   } catch (error) {
     console.error("Error:", error.message);
     process.exit(1);
