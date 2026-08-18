@@ -12,12 +12,12 @@ const SERVER_URL = "http://localhost:8080";
 
 // Default secUid (TikTok's official account)
 const DEFAULT_SEC_UID =
-  "MS4wLjABAAAAuU3iSTEOGcGXqtZNtJTZ8GKck5dtZrC3L-P3j86JA5XWYjiNld58YETlLlsCm-V2";
+  "MS4wLjABAAAA-qj1L6m50RO5E209ELe0VGiIHl-8vwRSquhG9197lCVeJ25_uk-aiXRyEWR9c1UA";
 
 const CONFIG = {
   DEVICE_ID: "7669228444366489089",
   ODIN_ID: "7146841732746036230",
-  VERIFY_FP: "verify_msl8vkcv_J8gj8YZl_giY1_4eBQ_9CmX_QnYkCihoPueD",
+  VERIFY_FP: "verify_msl8vkcv_J8gj8YZl_giY1_4eBQ_9CmX_QnYkCihoPueA",
   // scene: 21 = following list, 22 = followers list
   SCENE: { following: "21", follower: "67" },
 };
@@ -44,7 +44,7 @@ async function getSignedUrl(url) {
  * Make request to TikTok API with signed URL
  */
 async function fetchFromTikTok(signedData) {
-  //console.log(signedData.signed_url);
+  console.log(signedData.signed_url);
   //console.log(signedData.cookies);
   const response = await fetch(signedData.signed_url, {
     headers: {
@@ -182,12 +182,13 @@ async function main() {
       //console.log(data.total);
       minCursor = data.minCursor;
       hasMore = data.hasMore;
-
+      //hasMore = data.hasMore;
+      hasMore = false;
       console.log(minCursor);
       console.log(hasMore);
 
       data.userList.forEach((user) => {
-        console.log(++index, user.user.uniqueId, user.statsV2);
+        console.log(++index, user.user.uniqueId, user);
       });
       //await new Promise((resolve) => setTimeout(resolve, 3000));
     }
