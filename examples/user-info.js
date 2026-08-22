@@ -12,7 +12,7 @@
 const SERVER_URL = "http://localhost:8080";
 
 // Default username (TikTok's official account)
-const DEFAULT_USERNAME = "tiktok";
+const DEFAULT_USERNAME = "bossgirl.media";
 
 /**
  * Get signed URL from signature server
@@ -36,7 +36,11 @@ async function getSignedUrl(url) {
  * Make request to TikTok API with signed URL
  */
 async function fetchFromTikTok(signedData) {
-  const response = await fetch(signedData.signed_url, {
+  const url = new URL(signedData.signed_url);
+  url.searchParams.set("X-Bogus", "1");
+
+  console.log(url);
+  const response = await fetch(url.toString(), {
     headers: {
       "User-Agent": signedData.navigator.user_agent,
       Cookie: signedData.cookies,
@@ -59,6 +63,7 @@ function buildUserSearchUrl(username) {
   const params = new URLSearchParams({
     WebIdLastTime: Date.now().toString(),
     aid: "1988",
+    appType: "t",
     app_language: "en",
     app_name: "tiktok_web",
     browser_language: "en-US",
@@ -68,26 +73,47 @@ function buildUserSearchUrl(username) {
     browser_version: "5.0",
     channel: "tiktok_web",
     cookie_enabled: "true",
-    count: "10",
-    cursor: "0",
-    device_id: "7520531026079925774",
+    data_collection_enabled: "false",
+    device_id: "7676920074318235153",
     device_platform: "web_pc",
     focus_state: "true",
+    from_page: "user",
     history_len: "2",
     is_fullscreen: "false",
     is_page_visible: "true",
-    keyword: username,
     language: "en",
+    needAudienceControl: "true",
+    odinId: "7676920020005913607",
     os: "mac",
-    priority_region: "US",
+    priority_region: "",
     region: "US",
     screen_height: "1080",
     screen_width: "1920",
+    secUid: "",
     tz_name: "America/New_York",
+    uniqueId: "bossgirl.media",
+    user_is_login: "false",
     webcast_language: "en",
   });
 
-  return `https://www.tiktok.com/api/search/user/full/?${params.toString()}`;
+  return `https://www.tiktok.com/api/user/detail/?${params.toString()}`;
+}
+
+async function fetchViaBrowser(url) {
+  console.log("Using /fetch fallback (browser-based request)...");
+
+  const response = await fetch(`${SERVER_URL}/fetch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+
+  const result = await response.json();
+  if (result.status !== "ok") {
+    throw new Error(result.message || "Fetch failed");
+  }
+
+  return result.data;
 }
 
 /**
@@ -96,8 +122,6 @@ function buildUserSearchUrl(username) {
 async function fetchUserInfo(username) {
   const url = buildUserSearchUrl(username);
 
-  console.log(url);
-
   console.log(`Searching for user: @${username}`);
   console.log("");
 
@@ -105,96 +129,17 @@ async function fetchUserInfo(username) {
   console.log("Getting signed URL...");
   const signedData = await getSignedUrl(url);
 
-  console.log(signedData);
+  //console.log(signedData);
   // Fetch from TikTok
+  let data;
   console.log("Fetching from TikTok...");
-  const data = await fetchFromTikTok(signedData);
+  data = await fetchFromTikTok(signedData);
+
+  if (!data) {
+    data = await fetchViaBrowser(url);
+  }
 
   return data || {};
-}
-
-/**
- * Display user information
- */
-function displayUserInfo(data, targetUsername) {
-  const users = data.user_list || data.userList || [];
-
-  if (users.length === 0) {
-    console.log("User not found.");
-    return null;
-  }
-
-  // Find exact match or best match
-  const exactMatch = users.find((item) => {
-    const user = item.user_info || item;
-    return (
-      (user.uniqueId || user.unique_id || "").toLowerCase() ===
-      targetUsername.toLowerCase()
-    );
-  });
-
-  const userItem = exactMatch || users[0];
-  const user = userItem.user_info || userItem;
-
-  console.log("=".repeat(60));
-  console.log("USER PROFILE");
-  console.log("=".repeat(60));
-  console.log("");
-
-  console.log(user);
-
-  // Basic info
-  console.log(`Username:     @${user.uniqueId || user.unique_id}`);
-  console.log(`Nickname:     ${user.nickname}`);
-  console.log(`User ID:      ${user.uid || user.id || "N/A"}`);
-  console.log(
-    `SecUid:       ${(user.secUid || user.sec_uid || "").substring(0, 40)}...`,
-  );
-  console.log(
-    `Verified:     ${user.verified || user.custom_verify ? "Yes" : "No"}`,
-  );
-  console.log("");
-
-  // Bio
-  if (user.signature) {
-    console.log(`Bio:          ${user.signature}`);
-    console.log("");
-  }
-
-  // Stats
-  console.log("STATISTICS:");
-  console.log(
-    `  Followers:    ${(user.followerCount || user.follower_count)?.toLocaleString() || "N/A"}`,
-  );
-  console.log(
-    `  Following:    ${(user.followingCount || user.following_count)?.toLocaleString() || "N/A"}`,
-  );
-  console.log(
-    `  Total Likes:  ${(user.heartCount || user.total_favorited)?.toLocaleString() || "N/A"}`,
-  );
-  console.log("");
-
-  console.log("=".repeat(60));
-
-  // Output secUid for use with other examples
-  const secUid = user.secUid || user.sec_uid;
-  if (secUid) {
-    console.log("\nUse this secUid with fetch-videos.js:");
-    console.log(`node examples/fetch-videos.js "${secUid}"`);
-  }
-
-  // Show other matches if not exact
-  if (!exactMatch && users.length > 1) {
-    console.log("\n--- Other matching users ---");
-    users.slice(1, 5).forEach((item, index) => {
-      const u = item.user_info || item;
-      console.log(
-        `${index + 2}. @${u.uniqueId || u.unique_id} - ${u.nickname}`,
-      );
-    });
-  }
-
-  return user;
 }
 
 // Main execution
@@ -203,7 +148,7 @@ async function main() {
 
   try {
     const data = await fetchUserInfo(username);
-    displayUserInfo(data, username);
+    console.log(data);
   } catch (error) {
     console.error("Error:", error.message);
     process.exit(1);
